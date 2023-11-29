@@ -19,10 +19,16 @@ impl YtDlp {
         Ok(yt_dlp_path)
     }
 
+    /// yt-dlp https://www.youtube.com/watch\?v\=L3MjPtK7ZP8 --write-sub --write-auto-sub --sub-lang "en" --sub-format json3
     pub fn download_subtitle(video_url: &str) -> Result<String> {
         let output = Command::new("yt-dlp")
             .arg(video_url)
-            .arg("--write-subs")
+            .arg("--write-sub")
+            .arg("--write-auto-sub")
+            .arg("--sub-lang")
+            .arg("en")
+            .arg("--sub-format")
+            .arg("json3")
             .output()
             .expect("can't find `yt-dlp` binary in your system.");
         // info!("running {}"÷);
