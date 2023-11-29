@@ -29,13 +29,16 @@ impl YtDlp {
             .arg("en")
             .arg("--sub-format")
             .arg("json3")
+            .arg("-o")
+            .arg("./static/%(id)s.%(ext)s")
             .output()
             .expect("can't find `yt-dlp` binary in your system.");
-        // info!("running {}"÷);
 
         if !output.status.success() {
             bail!("{}", String::from_utf8(output.stderr)?);
         }
+
+        info!("out {}", String::from_utf8(output.stdout)?);
         Ok("".to_string())
     }
 }
