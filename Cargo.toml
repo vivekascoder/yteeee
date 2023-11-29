@@ -1,5 +1,5 @@
 [package]
-name = "yteeee-server"
+name = "yteeee"
 version = "0.1.0"
 edition = "2021"
 
@@ -11,3 +11,6 @@ actix-web = "4"
 anyhow = "1.0.75"
 env_logger = "0.10.1"
 log = "0.4.20"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
+futures = "0.3"
