@@ -11,7 +11,7 @@ struct Json3SubEvent {
 }
 
 #[derive(Serialize, Debug, Deserialize)]
-struct Json3Subtitle {
+pub struct Json3Subtitle {
     events: Vec<Json3SubEvent>,
 }
 

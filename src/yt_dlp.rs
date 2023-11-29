@@ -2,6 +2,9 @@ use std::process::Command;
 
 use anyhow::{bail, Result};
 use log::info;
+use qstring::QString;
+
+use crate::json3::Json3Subtitle;
 
 pub struct YtDlp {}
 
@@ -31,6 +34,7 @@ impl YtDlp {
             .arg("json3")
             .arg("-o")
             .arg("./static/%(id)s.%(ext)s")
+            .arg("--skip-download")
             .output()
             .expect("can't find `yt-dlp` binary in your system.");
 
@@ -39,6 +43,12 @@ impl YtDlp {
         }
 
         info!("out {}", String::from_utf8(output.stdout)?);
-        Ok("".to_string())
+        let a = video_url.split("watch").collect::<Vec<&str>>()[1];
+        let q_str = QString::from(a);
+        let json3_text =
+            std::fs::read_to_string(format!("./static/{}.en.json3", q_str.get("v").unwrap()))
+                .unwrap();
+        let json3: Json3Subtitle = serde_json::from_str(json3_text.as_str()).unwrap();
+        Ok(json3.to_string())
     }
 }
