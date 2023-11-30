@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 use log::info;
 use std::process::Command;
 use yteeee::{
-    route::{get_subtitle, get_video_info, ping},
+    route::{get_subtitle, get_video_info, ping, summarize_video},
     yt_dlp,
 };
 
@@ -20,6 +20,7 @@ async fn main() -> Result<()> {
             .service(ping)
             .service(get_subtitle)
             .service(get_video_info)
+            .service(summarize_video)
             .service(fs::Files::new("/static", "./static").show_files_listing())
     })
     .bind(("127.0.0.1", 8080))?

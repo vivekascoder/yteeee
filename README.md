@@ -27,3 +27,23 @@ against terms of service and you should
 unsa your ad blocker immediately
 ...
 ```
+
+## Get video info
+
+```bash
+ curl -X POST http://127.0.0.1:8080/get_video_info -H 'Content-Type: application/json' -d '{"video_url": "https://www.youtube.com/watch?v=L3MjPtK7ZP8"}'  | jq
+```
+
+Output
+
+```json
+{
+  "id": "L3MjPtK7ZP8",
+  "title": "My Thoughts on the YouTube Adblocker Drama",
+  "thumbnail": "https://i.ytimg.com/vi/L3MjPtK7ZP8/maxresdefault.jpg",
+  "description": "Here's my take on all of the ad blocker related drama going around the interwebs.\n\nHope you enjoyed the video!\n\nCheck out some code on my GitHub:\nhttps://github.com/realtux\nhttps://github.com/engineer-man/youtube\n\nOther Social:\nhttps://reddit.com/r/engineerman\nhttps://x.com/_EngineerMan\nhttps://discord.gg/engineerman",
+  "channel_url": "https://www.youtube.com/channel/UCrUL8K81R4VBzm-KOYwrcxQ",
+  "channel": "Engineer Man",
+  "view_count": 5390
+}
+```

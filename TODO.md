@@ -1,5 +1,4 @@
 ## Things to do
 
-- [ ] Download subtitle into public dir.
-
-## Complete
+- [x] Download subtitle into public dir.
+- [ ] Check caption file before calling commmand again (cache)
