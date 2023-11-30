@@ -5,6 +5,7 @@ use anyhow::{bail, Result};
 use log::info;
 use qstring::QString;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct YtVidoInfo {
@@ -41,32 +42,41 @@ impl YtDlp {
         Ok(yt_dlp_path)
     }
 
-    /// yt-dlp https://www.youtube.com/watch\?v\=L3MjPtK7ZP8 --write-sub --write-auto-sub --sub-lang "en" --sub-format json3
-    pub fn download_subtitle(video_url: &str) -> Result<String> {
-        let output = Command::new("yt-dlp")
-            .arg(video_url)
-            .arg("--write-sub")
-            .arg("--write-auto-sub")
-            .arg("--sub-lang")
-            .arg("en")
-            .arg("--sub-format")
-            .arg("json3")
-            .arg("-o")
-            .arg("./static/%(id)s.%(ext)s")
-            .arg("--skip-download")
-            .output()
-            .expect("can't find `yt-dlp` binary in your system.");
+    pub fn fetch_video_id_from_url(url: &str) -> Result<String> {
+        let a = url.split("watch").collect::<Vec<&str>>()[1];
+        let q_str = QString::from(a);
+        let a = q_str.get("v").expect("can't get the video id from url");
+        Ok(a.to_string())
+    }
 
-        if !output.status.success() {
-            bail!("{}", String::from_utf8(output.stderr)?);
+    /// TODO: Add way to delete downloaded content after regular interval or use --dump-single-json.
+    pub fn download_subtitle(video_url: &str) -> Result<String> {
+        let video_id = Self::fetch_video_id_from_url(video_url)?;
+        let p = format!("./static/{}.en.json", video_id);
+        let cached_path = Path::new(&p);
+        if !cached_path.exists() {
+            let output = Command::new("yt-dlp")
+                .arg(video_url)
+                .arg("--write-sub")
+                .arg("--write-auto-sub")
+                .arg("--sub-lang")
+                .arg("en")
+                .arg("--sub-format")
+                .arg("json3")
+                .arg("-o")
+                .arg("./static/%(id)s.%(ext)s")
+                .arg("--skip-download")
+                .output()
+                .expect("can't find `yt-dlp` binary in your system.");
+
+            if !output.status.success() {
+                bail!("{}", String::from_utf8(output.stderr)?);
+            }
+            info!("out {}", String::from_utf8(output.stdout)?);
         }
 
-        info!("out {}", String::from_utf8(output.stdout)?);
-        let a = video_url.split("watch").collect::<Vec<&str>>()[1];
-        let q_str = QString::from(a);
         let json3_text =
-            std::fs::read_to_string(format!("./static/{}.en.json3", q_str.get("v").unwrap()))
-                .unwrap();
+            std::fs::read_to_string(format!("./static/{}.en.json3", video_id)).unwrap();
         let json3: Json3Subtitle = serde_json::from_str(json3_text.as_str()).unwrap();
         Ok(json3.to_string())
     }
