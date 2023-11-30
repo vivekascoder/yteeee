@@ -31,7 +31,9 @@ unsa your ad blocker immediately
 ## Get video info
 
 ```bash
- curl -X POST http://127.0.0.1:8080/get_video_info -H 'Content-Type: application/json' -d '{"video_url": "https://www.youtube.com/watch?v=L3MjPtK7ZP8"}'  | jq
+curl -X POST http://127.0.0.1:8080/get_video_info \
+  -H 'Content-Type: application/json' \
+  -d '{"video_url": "https://www.youtube.com/watch?v=L3MjPtK7ZP8"}'  | jq
 ```
 
 Output
@@ -45,5 +47,36 @@ Output
   "channel_url": "https://www.youtube.com/channel/UCrUL8K81R4VBzm-KOYwrcxQ",
   "channel": "Engineer Man",
   "view_count": 5390
+}
+```
+
+## Summarize yt video.
+
+```bash
+curl -X POST http://127.0.0.1:8080/summarize_video \
+  -H 'Content-Type: application/json' \
+  -d '{"video_url": "https://www.youtube.com/watch?v=L3MjPtK7ZP8"}'  | jq
+```
+
+Response
+
+```json
+{
+  "status": true,
+  "data": {
+    "ChatGptCompletionRes": {
+      "model": "gpt-3.5-turbo-0613",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "In this video, the creator discusses the current ad blocker drama happening on YouTube. YouTube is threatening users that if they use ad blockers, they won't be able to see videos and it goes against their terms of service. The creator states that they are generally in favor of ad blockers as they believe they are important in the ecosystem of the internet. They argue that YouTube ads are hyper-targeted because Google tracks user activities, and blocking ads is a way to prevent companies from tracking and monetizing user data. They also mention that they support YouTube's decision to block users with ad blockers as it aligns with the principles of a free market. The creator discusses YouTube Premium and its impact on YouTube's revenue, suggesting that the subscription service represents a significant portion of their earnings. They also talk about mobile vs. desktop users and the difficulty in blocking ads on the YouTube mobile app. The video concludes by discussing the consequences of YouTube's actions, including the development of better ad blocking software and users seeking alternative video platforms. The creator also shares their thoughts on the ad-driven business model of social media platforms and media companies and suggests that an ad-free pay-for-content model may result in better quality products. They encourage viewers to share their opinions on the topic and express support for blocking ads."
+          },
+          "finish_reason": "stop"
+        }
+      ]
+    }
+  }
 }
 ```
