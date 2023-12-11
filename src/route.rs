@@ -6,11 +6,6 @@ use std::{collections::HashMap, env};
 
 use crate::yt_dlp;
 
-#[get("/")]
-pub async fn ping() -> impl Responder {
-    HttpResponse::Ok().body("pong!!!")
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetSubtitleReq {
     video_url: String,
@@ -33,7 +28,7 @@ pub struct SummarizeVideoReq {
 
 #[derive(Serialize, Deserialize, Debug)]
 enum SummarizeVideoResData {
-    ChatGptCompletionRes(ChatGptCompletionRes),
+    ChatGptCompletionRes(ChatGptCompletionResFormatted),
     SummarizeVideoResError(String),
 }
 
@@ -42,29 +37,6 @@ pub struct SummarizeVideoRes {
     status: bool,
     data: SummarizeVideoResData,
 }
-
-#[post("/get_subtitle")]
-pub async fn get_subtitle(data: web::Json<GetSubtitleReq>) -> Result<impl Responder> {
-    info!("Got req., {:?}", data);
-    // Download the subtitle using yt-dlp.
-    let text =
-        yt_dlp::YtDlp::download_subtitle(&data.video_url).expect("can't download the video.");
-    Ok(web::Json(GetSubtitleRes { subtitle: text }))
-}
-
-// {
-//     "model": "gpt-3.5-turbo",
-//     "messages": [
-//       {
-//         "role": "system",
-//         "content": "You are a poetic assistant, skilled in explaining complex programming concepts with creative flair."
-//       },
-//       {
-//         "role": "user",
-//         "content": "Compose a poem that explains the concept of recursion in programming."
-//       }
-//     ]
-//   }'
 
 #[derive(Serialize, Deserialize, Debug)]
 struct RoleContent {
@@ -85,63 +57,94 @@ struct ChatGptCompletionRes {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+struct ChatGptCompletionResFormatted {
+    result: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 struct ChatGptResChoices {
     index: u64,
     message: RoleContent,
     finish_reason: String,
 }
 
-#[post("/summarize_video")]
-pub async fn summarize_video(data: web::Json<GetSubtitleReq>) -> Result<impl Responder> {
+#[get("/")]
+pub async fn ping() -> impl Responder {
+    HttpResponse::Ok().body("pong!!!")
+}
+
+#[post("/get_subtitle")]
+pub async fn get_subtitle(data: web::Json<GetSubtitleReq>) -> Result<impl Responder> {
     info!("Got req., {:?}", data);
     // Download the subtitle using yt-dlp.
     let text =
         yt_dlp::YtDlp::download_subtitle(&data.video_url).expect("can't download the video.");
+    Ok(web::Json(GetSubtitleRes { subtitle: text }))
+}
 
-    // Sent openAi request to summarize the video.
-    let client = reqwest::Client::new();
-    let data_req = ChatGptCompletionReq {
-        model: "gpt-3.5-turbo".to_string(),
-        messages: vec![RoleContent {
-            role: "system".to_string(),
-            content:
-                "you're an ai that can summarise youtube videos from caption, title of the video."
-                    .to_string(),
-        }, RoleContent {
-            role: "user".to_string(),
-            content: format!("Summarise a youtube video that has the following caption in 200-300 words. \n\n  {}", text)
-        }],
-    };
+#[post("/summarize_video")]
+pub async fn summarize_video(data: web::Json<GetSubtitleReq>) -> Result<impl Responder> {
+    info!("Got req., {:?}", data);
 
-    let res = client
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Content-Type", "application/json")
-        .header(
-            "Authorization",
-            format!("Bearer {}", env::var("OPENAI_KEY_YTEEEE").unwrap()),
-        )
-        .json(&data_req)
-        .send()
-        .await
-        .expect("can't send request to openai");
+    let a = tokio::task::spawn(async move {
+        // Download the subtitle using yt-dlp.
+        info!("task: starting to download subs.");
+        let text =
+            yt_dlp::YtDlp::download_subtitle(&data.video_url).expect("can't download the video.");
+        info!("task: downloaded subs.");
 
-    // println!(
-    //     "status: {}, message: {:?}",
-    //     res.status().as_str(),
-    //     res.text().await.expect("text")
-    // );
-    if res.status().is_success() {
-        let output = res
-            .json::<ChatGptCompletionRes>()
+        // Sent openAi request to summarize the video.
+        let client = reqwest::Client::new();
+        let data_req = ChatGptCompletionReq {
+            model: "gpt-3.5-turbo".to_string(),
+            messages: vec![RoleContent {
+                role: "system".to_string(),
+                content:
+                    "you're an ai that can summarise youtube videos from caption, title of the video."
+                        .to_string(),
+            }, RoleContent {
+                role: "user".to_string(),
+                content: format!("Summarise a youtube video that has the following caption in 200-300 words. \n\n  {}", text)
+            }],
+        };
+
+        let res = client
+            .post("https://api.openai.com/v1/chat/completions")
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", env::var("OPENAI_KEY_YTEEEE").unwrap()),
+            )
+            .json(&data_req)
+            .send()
             .await
-            .expect("didn't got anything from api");
-        println!("this is the summary of the video: {:?}", output);
-        return Ok(web::Json(SummarizeVideoRes {
-            status: true,
-            data: SummarizeVideoResData::ChatGptCompletionRes(output),
-        }));
-    }
+            .expect("can't send request to openai");
+        info!("task: Got response from openai");
 
+        if res.status().is_success() {
+            let output = res
+                .json::<ChatGptCompletionRes>()
+                .await
+                .expect("didn't got anything from api");
+            info!("this is the summary of the video: {:?}", output);
+            let choices = output.choices;
+
+            // return Ok(web::Json(SummarizeVideoRes {
+            //     status: true,
+            //     data: SummarizeVideoResData::ChatGptCompletionRes(ChatGptCompletionResFormatted {
+            //         result: choices
+            //             .iter()
+            //             .map(|v| v.message.content.clone())
+            //             .collect::<Vec<String>>(),
+            //     }),
+            // }));
+
+            // Ok(web::Json(SummarizeVideoRes {
+            //     status: false,
+            //     data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
+            // }))
+        }
+    });
     Ok(web::Json(SummarizeVideoRes {
         status: false,
         data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
