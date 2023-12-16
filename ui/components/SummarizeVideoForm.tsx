@@ -13,41 +13,18 @@ import {
   Tooltip,
   useToast,
 } from "@chakra-ui/react";
+import { useFormik } from "formik";
 
-// function SliderWithTT(props: ISliderWithTT) {
-//   const [sliderValue] = [props.sliderValue];
-//   const [showTooltip, setShowTooltip] = useState(false);
-//   return (
-//     <Slider
-//       id="slider"
-//       // defaultValue={props.default}
-//       min={props.min}
-//       max={props.max}
-//       name="slider"
-//       colorScheme="blue"
-//       onChange={props.onChange}
-//       onMouseEnter={() => setShowTooltip(true)}
-//       onMouseLeave={() => setShowTooltip(false)}
-//     >
-//       <SliderTrack>
-//         <SliderFilledTrack />
-//       </SliderTrack>
-//       <Tooltip
-//         hasArrow
-//         bg="teal.500"
-//         color="white"
-//         placement="top"
-//         isOpen={showTooltip}
-//         label={`${sliderValue}%`}
-//       >
-//         <SliderThumb />
-//       </Tooltip>
-//     </Slider>
-//   );
-// }
+interface ISummarizeVideoForm {
+  youtubeUrl: string;
+}
 
 export default function SummarizeVideoForm() {
   const toast = useToast();
+  const formik = useFormik<ISummarizeVideoForm>({
+    initialValues: { youtubeUrl: "" },
+    onSubmit: (values) => {},
+  });
 
   // Formik
   //   const formik = useFormik<ICreateDAOFormik>({
@@ -144,22 +121,22 @@ export default function SummarizeVideoForm() {
         my={6}
       >
         <Box>
-          <Heading textAlign={"center"}>Create ⚖️ DAO</Heading>
+          <Heading textAlign={"center"}>Summarize</Heading>
         </Box>
         <Box display={"flex"}>
           <Box width="full" mr={3}>
-            <FormLabel htmlFor={"daoTokenName"}>DAO Token name</FormLabel>
+            <FormLabel htmlFor={"youtubeUrl"}>Enter youtube url</FormLabel>
             <Input
-              name="daoTokenName"
-              type={"text"}
-              value={"s"}
-              onChange={() => {}}
-              placeholder={"Super DAO token"}
+              name="youtubeUrl"
+              type={"url"}
+              value={formik.values.youtubeUrl}
+              onChange={formik.handleChange}
+              placeholder={"https://www.youtube.com/watch?v=9iqn1HhFJ6c"}
             />
           </Box>
         </Box>
-        <Button colorScheme={"blue"} isLoading={false} type="submit">
-          🚀 Create
+        <Button mt={4} colorScheme={"blue"} isLoading={false} type="submit">
+          Summarize
         </Button>
       </Box>
     </form>

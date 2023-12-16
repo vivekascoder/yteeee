@@ -106,7 +106,7 @@ pub async fn get_subtitle(data: web::Json<GetSubtitleReq>) -> Result<impl Respon
 pub async fn summarize_video(data: web::Json<GetSubtitleReq>) -> Result<impl Responder> {
     info!("Got req., {:?}", data);
 
-    let a = tokio::task::spawn(async move {
+    tokio::task::spawn(async move {
         // Download the subtitle using yt-dlp.
         info!("task: starting to download subs.");
         let text =
@@ -149,26 +149,31 @@ pub async fn summarize_video(data: web::Json<GetSubtitleReq>) -> Result<impl Res
             info!("this is the summary of the video: {:?}", output);
             let choices = output.choices;
 
-            // return Ok(web::Json(SummarizeVideoRes {
-            //     status: true,
-            //     data: SummarizeVideoResData::ChatGptCompletionRes(ChatGptCompletionResFormatted {
-            //         result: choices
-            //             .iter()
-            //             .map(|v| v.message.content.clone())
-            //             .collect::<Vec<String>>(),
-            //     }),
-            // }));
+            return Ok(web::Json(SummarizeVideoRes {
+                status: true,
+                data: SummarizeVideoResData::ChatGptCompletionRes(ChatGptCompletionResFormatted {
+                    result: choices
+                        .iter()
+                        .map(|v| v.message.content.clone())
+                        .collect::<Vec<String>>(),
+                }),
+            }));
 
             // Ok(web::Json(SummarizeVideoRes {
             //     status: false,
             //     data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
             // }))
         }
+        return Ok(web::Json(SummarizeVideoRes {
+            status: false,
+            data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
+        }));
     });
-    Ok(web::Json(SummarizeVideoRes {
+
+    return Ok(web::Json(SummarizeVideoRes {
         status: false,
         data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
-    }))
+    }));
 }
 
 #[post("/get_video_info")]
