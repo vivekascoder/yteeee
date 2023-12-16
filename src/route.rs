@@ -1,18 +1,13 @@
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, Result};
 use anyhow::bail;
-use log::info;
-use serde::{Deserialize, Serialize};
-use std::{env};
 use chrono::{prelude::*, Duration};
 use jsonwebtoken::{encode, EncodingKey, Header};
+use log::info;
+use serde::{Deserialize, Serialize};
+use std::env;
 
-use crate::yt_dlp;
 use crate::google_oauth::{get_google_user, request_token};
-
-#[get("/")]
-pub async fn ping() -> impl Responder {
-    HttpResponse::Ok().body("pong!!!")
-}
+use crate::yt_dlp;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetSubtitleReq {
@@ -58,30 +53,6 @@ pub struct QueryCode {
     pub code: String,
     pub state: String,
 }
-
-#[post("/get_subtitle")]
-pub async fn get_subtitle(data: web::Json<GetSubtitleReq>) -> Result<impl Responder> {
-    info!("Got req., {:?}", data);
-    // Download the subtitle using yt-dlp.
-    let text =
-        yt_dlp::YtDlp::download_subtitle(&data.video_url).expect("can't download the video.");
-    Ok(web::Json(GetSubtitleRes { subtitle: text }))
-}
-
-// {
-//     "model": "gpt-3.5-turbo",
-//     "messages": [
-//       {
-//         "role": "system",
-//         "content": "You are a poetic assistant, skilled in explaining complex programming concepts with creative flair."
-//       },
-//       {
-//         "role": "user",
-//         "content": "Compose a poem that explains the concept of recursion in programming."
-//       }
-//     ]
-//   }'
-
 #[derive(Serialize, Deserialize, Debug)]
 struct RoleContent {
     role: String,
@@ -109,7 +80,21 @@ struct ChatGptResChoices {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct GoogleOauthResponse {
-    token: String
+    token: String,
+}
+
+#[get("/")]
+pub async fn ping() -> impl Responder {
+    HttpResponse::Ok().body("pong!!!")
+}
+
+#[post("/get_subtitle")]
+pub async fn get_subtitle(data: web::Json<GetSubtitleReq>) -> Result<impl Responder> {
+    info!("Got req., {:?}", data);
+    // Download the subtitle using yt-dlp.
+    let text =
+        yt_dlp::YtDlp::download_subtitle(&data.video_url).expect("can't download the video.");
+    Ok(web::Json(GetSubtitleRes { subtitle: text }))
 }
 
 #[post("/summarize_video")]
@@ -177,15 +162,10 @@ pub async fn get_video_info(data: web::Json<GetVideoInfoReq>) -> Result<impl Res
     Ok(web::Json(vid))
 }
 
-
-
-// Login related routes goes here 
-
+// Login related routes goes here
 
 #[get("/sessions/oauth/google")]
-async fn google_oauth_handler(
-    query: web::Query<QueryCode>,
-) -> impl Responder {
+async fn google_oauth_handler(query: web::Query<QueryCode>) -> impl Responder {
     let code = &query.code;
     let state = &query.state;
 
@@ -196,7 +176,7 @@ async fn google_oauth_handler(
     }
 
     let token_response = request_token(code.as_str()).await;
-    
+
     if token_response.is_err() {
         let message = token_response.err().unwrap().to_string();
         return HttpResponse::BadGateway()
@@ -239,9 +219,6 @@ async fn google_oauth_handler(
     .unwrap();
 
     let mut response = HttpResponse::Ok();
-    response.json(GoogleOauthResponse {
-        token: token
-    });
+    response.json(GoogleOauthResponse { token: token });
     response.finish()
 }
- 
