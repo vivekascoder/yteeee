@@ -20,3 +20,6 @@ tokio = "1.34.0"
 actix-web-actors = "4.1"
 actix = "0.13"
 actix-rt = "2.2"                                       # <-- Runtime for actix
+chrono = { version = "0.4.23", features = ["serde"] }
+jsonwebtoken = "9.2.0"
+dotenv = "0.15.0"
