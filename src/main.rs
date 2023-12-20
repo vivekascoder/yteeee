@@ -1,11 +1,13 @@
 use actix_files as fs;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use anyhow::{bail, Result};
+use diesel::prelude::*;
+use diesel::sqlite::Sqlite;
 use dotenv::dotenv;
 use log::info;
-use std::process::Command;
+use std::{env, process::Command};
 use yteeee::{
-    route::{get_subtitle, get_video_info, ping, summarize_video},
+    route::{get_subtitle, get_task_details, get_video_info, ping, summarize_video},
     ws::index,
     yt_dlp,
 };
@@ -24,6 +26,7 @@ async fn main() -> Result<()> {
             .service(get_subtitle)
             .service(get_video_info)
             .service(summarize_video)
+            .service(get_task_details)
             .route("/ws/", web::get().to(index))
             .service(fs::Files::new("/static", "./static").show_files_listing())
     })

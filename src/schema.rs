@@ -2,8 +2,9 @@
 
 diesel::table! {
     tasks (id) {
-        id -> Nullable<Text>,
+        id -> Text,
         youtube_url -> Text,
         status -> Text,
+        result -> Nullable<Text>,
     }
 }

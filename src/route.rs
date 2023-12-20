@@ -1,12 +1,18 @@
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, Result};
 use anyhow::bail;
 use chrono::{prelude::*, Duration};
+use diesel::OptionalExtension;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl, SelectableHelper};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use log::info;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::env;
+use uuid::Uuid;
 
+use crate::db::{establish_connection, Task};
 use crate::google_oauth::{get_google_user, request_token};
+use crate::schema::tasks;
 use crate::yt_dlp;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,6 +39,7 @@ pub struct SummarizeVideoReq {
 enum SummarizeVideoResData {
     ChatGptCompletionRes(ChatGptCompletionResFormatted),
     SummarizeVideoResError(String),
+    TaskSpwaned(String),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -102,16 +109,58 @@ pub async fn get_subtitle(data: web::Json<GetSubtitleReq>) -> Result<impl Respon
     Ok(web::Json(GetSubtitleRes { subtitle: text }))
 }
 
+#[get("/task/{uuid}")]
+pub async fn get_task_details(path: web::Path<String>) -> Result<impl Responder> {
+    use crate::schema::tasks::dsl::*;
+
+    let conn = &mut establish_connection();
+    let uuid = path.into_inner();
+    let task: Option<Task> = tasks
+        .find(&uuid)
+        .select(Task::as_select())
+        .first(conn)
+        .optional()
+        .expect("error while getting task");
+    println!("p: {}, task: {:?}", &uuid, &task);
+    Ok(web::Json(json!(task)))
+}
+
 #[post("/summarize_video")]
 pub async fn summarize_video(data: web::Json<GetSubtitleReq>) -> Result<impl Responder> {
     info!("Got req., {:?}", data);
 
+    //
+    // Spawn a thread for now.
+    //
+    let task = Task {
+        id: Uuid::new_v4().to_string(),
+        youtube_url: data.video_url.clone(),
+        status: "start".to_string(),
+        result: None,
+    };
+    let task_cloned = task.clone();
     tokio::task::spawn(async move {
+        let task = task_cloned;
+        use crate::schema::tasks::dsl::*;
         // Download the subtitle using yt-dlp.
         info!("task: starting to download subs.");
+
+        // Create new task
+        let conn = &mut establish_connection();
+        diesel::insert_into(tasks)
+            .values(&task)
+            .execute(conn)
+            .expect("Error saving new post");
+
         let text =
             yt_dlp::YtDlp::download_subtitle(&data.video_url).expect("can't download the video.");
         info!("task: downloaded subs.");
+
+        // diesel::update(posts).set(draft.eq(false)).execute(conn)
+        diesel::update(tasks)
+            .filter(id.eq(&task.id))
+            .set(status.eq("Subtitles downloaded".to_string()))
+            .execute(conn);
 
         // Sent openAi request to summarize the video.
         let client = reqwest::Client::new();
@@ -146,33 +195,46 @@ pub async fn summarize_video(data: web::Json<GetSubtitleReq>) -> Result<impl Res
                 .json::<ChatGptCompletionRes>()
                 .await
                 .expect("didn't got anything from api");
+            let formatted_result = ChatGptCompletionResFormatted {
+                result: output
+                    .choices
+                    .iter()
+                    .map(|v| v.message.content.clone())
+                    .collect::<Vec<String>>(),
+            };
+            diesel::update(tasks)
+                .filter(id.eq(&task.id))
+                .set((
+                    status.eq("summarized".to_string()),
+                    result.eq(Some(serde_json::to_string(&formatted_result).unwrap())),
+                ))
+                .execute(conn);
             info!("this is the summary of the video: {:?}", output);
-            let choices = output.choices;
 
-            return Ok(web::Json(SummarizeVideoRes {
-                status: true,
-                data: SummarizeVideoResData::ChatGptCompletionRes(ChatGptCompletionResFormatted {
-                    result: choices
-                        .iter()
-                        .map(|v| v.message.content.clone())
-                        .collect::<Vec<String>>(),
-                }),
-            }));
+            // return Ok(web::Json(SummarizeVideoRes {
+            //     status: true,
+            //     data: SummarizeVideoResData::ChatGptCompletionRes(ChatGptCompletionResFormatted {
+            //         result: choices
+            //             .iter()
+            //             .map(|v| v.message.content.clone())
+            //             .collect::<Vec<String>>(),
+            //     }),
+            // }));
 
             // Ok(web::Json(SummarizeVideoRes {
             //     status: false,
             //     data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
             // }))
         }
-        return Ok(web::Json(SummarizeVideoRes {
-            status: false,
-            data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
-        }));
+        // return Ok(web::Json(SummarizeVideoRes {
+        //     status: false,
+        //     data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
+        // }));
     });
 
     return Ok(web::Json(SummarizeVideoRes {
-        status: false,
-        data: SummarizeVideoResData::SummarizeVideoResError("can't fetch".to_string()),
+        status: true,
+        data: SummarizeVideoResData::TaskSpwaned(task.id),
     }));
 }
 

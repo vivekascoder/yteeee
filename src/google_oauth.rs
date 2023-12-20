@@ -3,8 +3,6 @@ use reqwest::{Client, Url};
 use serde::Deserialize;
 use std::error::Error;
 
-
-
 #[derive(Deserialize)]
 pub struct OAuthResponse {
     pub access_token: String,
@@ -23,9 +21,7 @@ pub struct GoogleUserResult {
     pub locale: String,
 }
 
-pub async fn request_token(
-    authorization_code: &str,
-) -> Result<OAuthResponse, Box<dyn Error>> {
+pub async fn request_token(authorization_code: &str) -> Result<OAuthResponse, Box<dyn Error>> {
     let redirect_url = "url";
     let client_secret = "secret";
     let client_id = "client_id ";
